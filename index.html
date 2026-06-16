@@ -7,14 +7,27 @@
 
     <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-look-at-component@1.0.0/dist/aframe-look-at-component.min.js"></script>
+    
+    <script>
+        AFRAME.registerComponent('yaw-follower', {
+            tick: function () {
+                const cam = document.querySelector('a-camera');
+                if (cam) {
+                    // Extrai a rotação da câmera de forma segura para VR (Quaternion)
+                    const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+                    euler.setFromQuaternion(cam.object3D.quaternion);
+                    // Aplica apenas o giro horizontal (esquerda/direita) ao seguidor
+                    this.el.object3D.rotation.y = euler.y;
+                }
+            }
+        });
+    </script>
 </head>
 
 <body>
 
-<!-- A propriedade webxr aqui impede que a câmera pule para 1,60m de altura no modo VR -->
-<a-scene webxr="referenceSpaceType: local">
+<a-scene>
 
-    <!-- Assets -->
     <a-assets>
         <audio id="audioPorta" src="02_Porta.mp3"></audio>
         <audio id="audioGrifo" src="02_Grifo.mp3"></audio>
@@ -27,11 +40,9 @@
         <video id="videoSaida" src="Saida_Cena_1.mp4" preload="auto"></video>
     </a-assets>
 
-    <!-- Panorama -->
     <a-sky src="Untitled.png"></a-sky>
     <a-entity id="hotspotContainer"></a-entity>
 
-    <!-- GRID DE REFERÊNCIA -->
     <a-plane
         id="referenceGrid"
         visible="false"
@@ -43,11 +54,9 @@
         material="wireframe:true">
     </a-plane>
 
-    <!-- RIG GERAL DO JOGADOR -->
     <a-entity id="cameraRig">
 
-        <!-- CÂMERA/CABEÇA (Onde ficam apenas os elementos HUD fixos como mira e avisos) -->
-        <a-entity id="head" camera look-controls>
+        <a-camera id="head" look-controls>
             <a-cursor
                 id="cursor"
                 color="white"
@@ -82,22 +91,22 @@
                 position="0 0 -0.8"
                 material="src:#videoSaida">
             </a-plane>
-        </a-entity>
+        </a-camera>
 
-        <!-- SEGUIDOR (Acompanha a visão horizontal, permitindo que você olhe para baixo e ative) -->
-        <a-entity id="hudFollower">
+        <a-entity id="hudFollower" yaw-follower>
             <a-circle
                 id="recenterButton"
                 position="0 -1.0 -2"
-                radius="0.18"
-                color="#AAAAAA"
-                opacity="0.45"
-                look-at="#head">
+                radius="0.2"
+                color="#444444"
+                opacity="0.6"
+                look-at="a-camera">
+                
                 <a-text
                     value="CENTRALIZAR"
-                    position="0 -0.3 0"
+                    position="0 0.05 0.01"
                     align="center"
-                    width="2"
+                    width="2.5"
                     color="#FFFFFF">
                 </a-text>
             </a-circle>
@@ -141,7 +150,7 @@ window.onload = () => {
         hotspot.setAttribute("color", "#AAAAAA");
         hotspot.setAttribute("opacity", debugMode ? "0.20" : "0");
         hotspot.setAttribute("side", "double");
-        hotspot.setAttribute("look-at", "#head"); // Agora olha para a nova Câmera real
+        hotspot.setAttribute("look-at", "a-camera"); 
 
         const tagLabel = document.createElement("a-text");
         tagLabel.setAttribute("class", "debugLabel");
@@ -237,23 +246,12 @@ window.onload = () => {
         });
     });
 
-    // LÓGICA DE RECENTRALIZAÇÃO (Botão Seguidor Inteligente)
+    // LÓGICA DE RECENTRALIZAÇÃO 
     const recenterBtn = document.querySelector("#recenterButton");
     const rig = document.querySelector("#cameraRig");
-    const head = document.querySelector("#head");
-    const hudFollower = document.querySelector("#hudFollower");
     let rcTimer = null;
     let rcProgress = 0;
 
-    // Essa função faz o botão "perseguir" o rosto do jogador nos lados, 
-    // permitindo mirar nele apenas olhando para baixo.
-    const updateFollower = () => {
-        hudFollower.object3D.rotation.y = head.object3D.rotation.y;
-        requestAnimationFrame(updateFollower);
-    };
-    updateFollower();
-
-    // Ativação do botão de Recentralizar (Funciona igual aos outros)
     recenterBtn.addEventListener("mouseenter", () => {
         if (videoTocando) return;
 
@@ -270,13 +268,17 @@ window.onload = () => {
                 rcProgress = 0;
                 progressRing.setAttribute("theta-length", "0");
 
-                // Gira o mundo na direção contrária que a pessoa está olhando
-                rig.object3D.rotation.y -= head.object3D.rotation.y;
+                // Identifica pra onde a pessoa está olhando e gira o mundo pra compensar
+                const cam = document.querySelector('a-camera');
+                const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+                euler.setFromQuaternion(cam.object3D.quaternion);
+                
+                rig.object3D.rotation.y -= euler.y;
 
-                // Feedback visual de sucesso (Pilha verde rapida)
+                // Feedback visual verde indicando sucesso
                 recenterBtn.setAttribute("color", "#00FF00");
                 setTimeout(() => {
-                    recenterBtn.setAttribute("color", "#AAAAAA");
+                    recenterBtn.setAttribute("color", "#444444");
                 }, 1000);
             }
         }, 50);
@@ -286,9 +288,9 @@ window.onload = () => {
         clearInterval(rcTimer);
         rcProgress = 0;
         progressRing.setAttribute("theta-length", "0");
-        recenterBtn.setAttribute("opacity", "0.45");
+        recenterBtn.setAttribute("opacity", "0.6");
         recenterBtn.setAttribute("scale", "1 1 1");
-        recenterBtn.setAttribute("color", "#AAAAAA");
+        recenterBtn.setAttribute("color", "#444444");
     });
 
     // MODO DE DEPURACÃO (Teclado 'h')
