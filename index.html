@@ -11,8 +11,10 @@
 
 <body>
 
-<a-scene>
+<!-- A propriedade webxr aqui impede que a câmera pule para 1,60m de altura no modo VR -->
+<a-scene webxr="referenceSpaceType: local">
 
+    <!-- Assets -->
     <a-assets>
         <audio id="audioPorta" src="02_Porta.mp3"></audio>
         <audio id="audioGrifo" src="02_Grifo.mp3"></audio>
@@ -25,9 +27,11 @@
         <video id="videoSaida" src="Saida_Cena_1.mp4" preload="auto"></video>
     </a-assets>
 
+    <!-- Panorama -->
     <a-sky src="Untitled.png"></a-sky>
     <a-entity id="hotspotContainer"></a-entity>
 
+    <!-- GRID DE REFERÊNCIA -->
     <a-plane
         id="referenceGrid"
         visible="false"
@@ -39,62 +43,65 @@
         material="wireframe:true">
     </a-plane>
 
-    <a-entity
-        id="cameraRig"
-        camera
-        look-controls>
+    <!-- RIG GERAL DO JOGADOR -->
+    <a-entity id="cameraRig">
 
-        <a-cursor
-            id="cursor"
-            color="white"
-            fuse="false"
-            geometry="primitive:ring; radiusInner:0.01; radiusOuter:0.02">
-        </a-cursor>
+        <!-- CÂMERA/CABEÇA (Onde ficam apenas os elementos HUD fixos como mira e avisos) -->
+        <a-entity id="head" camera look-controls>
+            <a-cursor
+                id="cursor"
+                color="white"
+                fuse="false"
+                geometry="primitive:ring; radiusInner:0.01; radiusOuter:0.02">
+            </a-cursor>
 
-        <a-ring
-            id="progressRing"
-            position="0 0 -1"
-            radius-inner="0.028"
-            radius-outer="0.04"
-            color="white"
-            opacity="0.8"
-            theta-length="0">
-        </a-ring>
+            <a-ring
+                id="progressRing"
+                position="0 0 -1"
+                radius-inner="0.028"
+                radius-outer="0.04"
+                color="white"
+                opacity="0.8"
+                theta-length="0">
+            </a-ring>
 
-        <a-text
-            id="actionText"
-            value=""
-            position="0 0.1 -1"
-            align="center"
-            width="1.5"
-            color="#FFD700">
-        </a-text>
+            <a-text
+                id="actionText"
+                value=""
+                position="0 0.1 -1"
+                align="center"
+                width="1.5"
+                color="#FFD700">
+            </a-text>
 
-        <a-circle
-            id="recenterButton"
-            position="-0.35 -0.25 -1"
-            radius="0.05"
-            color="#FFFFFF"
-            opacity="0.25">
-        </a-circle>
+            <a-plane
+                id="videoScreen"
+                visible="false"
+                width="4"
+                height="2.25"
+                position="0 0 -0.8"
+                material="src:#videoSaida">
+            </a-plane>
+        </a-entity>
 
-        <a-text
-            id="recenterText"
-            value=""
-            position="0 -0.15 -1"
-            align="center"
-            width="1.5"
-            color="white">
-        </a-text>
-
-        <a-plane
-            id="videoScreen"
-            visible="false"
-            width="4"
-            height="2.25"
-            position="0 0 -0.8"
-            material="src:#videoSaida">
-        </a-plane>
+        <!-- SEGUIDOR (Acompanha a visão horizontal, permitindo que você olhe para baixo e ative) -->
+        <a-entity id="hudFollower">
+            <a-circle
+                id="recenterButton"
+                position="0 -1.0 -2"
+                radius="0.18"
+                color="#AAAAAA"
+                opacity="0.45"
+                look-at="#head">
+                <a-text
+                    value="CENTRALIZAR"
+                    position="0 -0.3 0"
+                    align="center"
+                    width="2"
+                    color="#FFFFFF">
+                </a-text>
+            </a-circle>
+        </a-entity>
 
     </a-entity>
 
@@ -111,7 +118,6 @@ window.onload = () => {
     const progressRing = document.querySelector("#progressRing");
     const actionText = document.querySelector("#actionText");
 
-    // Modo debug desativado por padrão
     let debugMode = false; 
     let videoTocando = false;
 
@@ -123,8 +129,6 @@ window.onload = () => {
         { nome: "Coroa", posicao: "1 -1.2 -2", audio: "audioCoroa", tempo: 1000, raio: "0.08" },
         { nome: "Chifre", posicao: "-1 -1.2 -2", audio: "audioChifre", tempo: 1000, raio: "0.08" },
         { nome: "Porta", posicao: "0 -1.2 -3", audio: "audioPorta", tempo: 1000, raio: "0.08" }, 
-        
-        // Ativador do Vídeo
         { nome: "SaidaVideo", posicao: "0 -1.2 3", tempo: 6000, raio: "0.12", mensagem: "SAINDO DA AREA", corTexto: "#FF0000", isVideo: true }
     ];
 
@@ -137,9 +141,8 @@ window.onload = () => {
         hotspot.setAttribute("color", "#AAAAAA");
         hotspot.setAttribute("opacity", debugMode ? "0.20" : "0");
         hotspot.setAttribute("side", "double");
-        hotspot.setAttribute("look-at", "#cameraRig");
+        hotspot.setAttribute("look-at", "#head"); // Agora olha para a nova Câmera real
 
-        // Criar tag de texto flutuante (Oculta por padrão para TODOS os botões)
         const tagLabel = document.createElement("a-text");
         tagLabel.setAttribute("class", "debugLabel");
         tagLabel.setAttribute("value", data.audio ? `Audio: ${data.audio}` : `Trigger: ${data.nome}`);
@@ -196,7 +199,6 @@ window.onload = () => {
                     hotspot.setAttribute("opacity", "0.85");
                     hotspot.setAttribute("color", "#FFFFFF");
 
-                    // Dispara o vídeo travado na tela
                     if (data.isVideo) {
                         videoTocando = true;
                         actionText.setAttribute("value", ""); 
@@ -207,7 +209,6 @@ window.onload = () => {
                         screen.setAttribute("visible", true);
                         video.play();
 
-                        // Quando o vídeo terminar
                         video.onended = () => {
                             screen.setAttribute("visible", false);
                             videoTocando = false;
@@ -236,29 +237,58 @@ window.onload = () => {
         });
     });
 
-    // LÓGICA DE RECENTRALIZAÇÃO (HUD)
-    const recenterButton = document.querySelector("#recenterButton");
-    const recenterText = document.querySelector("#recenterText");
-    const cameraRig = document.querySelector("#cameraRig");
-    let recenterTimer;
+    // LÓGICA DE RECENTRALIZAÇÃO (Botão Seguidor Inteligente)
+    const recenterBtn = document.querySelector("#recenterButton");
+    const rig = document.querySelector("#cameraRig");
+    const head = document.querySelector("#head");
+    const hudFollower = document.querySelector("#hudFollower");
+    let rcTimer = null;
+    let rcProgress = 0;
 
-    recenterButton.addEventListener("mouseenter", () => {
+    // Essa função faz o botão "perseguir" o rosto do jogador nos lados, 
+    // permitindo mirar nele apenas olhando para baixo.
+    const updateFollower = () => {
+        hudFollower.object3D.rotation.y = head.object3D.rotation.y;
+        requestAnimationFrame(updateFollower);
+    };
+    updateFollower();
+
+    // Ativação do botão de Recentralizar (Funciona igual aos outros)
+    recenterBtn.addEventListener("mouseenter", () => {
         if (videoTocando) return;
-        recenterText.setAttribute("value", "Olhe para frente");
-        
-        recenterTimer = setTimeout(() => {
-            cameraRig.object3D.rotation.y = 0;
-            recenterText.setAttribute("value", "Centro atualizado");
-            
-            setTimeout(() => {
-                recenterText.setAttribute("value", "");
-            }, 2000);
-        }, 2000);
+
+        recenterBtn.setAttribute("opacity", "0.85");
+        recenterBtn.setAttribute("scale", "1.15 1.15 1.15");
+        rcProgress = 0;
+
+        rcTimer = setInterval(() => {
+            rcProgress += 50;
+            const percent = (rcProgress / 2000) * 360; // 2 segundos para focar
+            progressRing.setAttribute("theta-length", percent);
+
+            if (rcProgress >= 2000) {
+                rcProgress = 0;
+                progressRing.setAttribute("theta-length", "0");
+
+                // Gira o mundo na direção contrária que a pessoa está olhando
+                rig.object3D.rotation.y -= head.object3D.rotation.y;
+
+                // Feedback visual de sucesso (Pilha verde rapida)
+                recenterBtn.setAttribute("color", "#00FF00");
+                setTimeout(() => {
+                    recenterBtn.setAttribute("color", "#AAAAAA");
+                }, 1000);
+            }
+        }, 50);
     });
 
-    recenterButton.addEventListener("mouseleave", () => {
-        clearTimeout(recenterTimer);
-        recenterText.setAttribute("value", "");
+    recenterBtn.addEventListener("mouseleave", () => {
+        clearInterval(rcTimer);
+        rcProgress = 0;
+        progressRing.setAttribute("theta-length", "0");
+        recenterBtn.setAttribute("opacity", "0.45");
+        recenterBtn.setAttribute("scale", "1 1 1");
+        recenterBtn.setAttribute("color", "#AAAAAA");
     });
 
     // MODO DE DEPURACÃO (Teclado 'h')
@@ -266,18 +296,13 @@ window.onload = () => {
         if (event.key.toLowerCase() === "h") {
             debugMode = !debugMode;
             
-            // Alterna a Grid de Referência
             const referenceGrid = document.querySelector("#referenceGrid");
-            if (referenceGrid) {
-                referenceGrid.setAttribute("visible", debugMode);
-            }
+            if (referenceGrid) referenceGrid.setAttribute("visible", debugMode);
 
-            // Alterna os círculos (exceto o botão de recentralizar)
             document.querySelectorAll("a-circle:not(#recenterButton)").forEach(h => {
                 h.setAttribute("opacity", debugMode ? "0.20" : "0");
             });
 
-            // Alterna AS TAGS DE TEXTO (Agora para todas)
             document.querySelectorAll(".debugLabel").forEach(label => {
                 label.setAttribute("visible", debugMode);
             });
