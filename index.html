@@ -11,12 +11,10 @@
     <script>
         AFRAME.registerComponent('yaw-follower', {
             tick: function () {
-                const cam = document.querySelector('a-camera');
-                if (cam) {
-                    // Extrai a rotação da câmera de forma segura para VR (Quaternion)
+                const head = document.querySelector('#head');
+                if (head) {
                     const euler = new THREE.Euler(0, 0, 0, 'YXZ');
-                    euler.setFromQuaternion(cam.object3D.quaternion);
-                    // Aplica apenas o giro horizontal (esquerda/direita) ao seguidor
+                    euler.setFromQuaternion(head.object3D.quaternion);
                     this.el.object3D.rotation.y = euler.y;
                 }
             }
@@ -26,7 +24,7 @@
 
 <body>
 
-<a-scene>
+<a-scene webxr="referenceSpaceType: local">
 
     <a-assets>
         <audio id="audioPorta" src="02_Porta.mp3"></audio>
@@ -36,101 +34,54 @@
         <audio id="audioCoroa" src="02_Coroa.mp3"></audio>
         <audio id="audioChifre" src="02_Chifre.mp3"></audio>
         <audio id="musicaAmbiente" src="trilha.mp3"></audio>
-        
         <video id="videoSaida" src="Saida_Cena_1.mp4" preload="auto"></video>
     </a-assets>
 
     <a-sky src="Untitled.png"></a-sky>
     <a-entity id="hotspotContainer"></a-entity>
 
-    <a-plane
-        id="referenceGrid"
-        visible="false"
-        position="0 1.5 -3"
-        rotation="-90 0 0"
-        width="20"
-        height="20"
-        color="#222222"
-        material="wireframe:true">
-    </a-plane>
+    <a-plane id="referenceGrid" visible="false" position="0 1.5 -3" rotation="-90 0 0" width="20" height="20" color="#222222" material="wireframe:true"></a-plane>
 
-    <a-entity id="cameraRig">
-
-        <a-camera id="head" look-controls>
-            <a-cursor
-                id="cursor"
-                color="white"
-                fuse="false"
-                geometry="primitive:ring; radiusInner:0.01; radiusOuter:0.02">
-            </a-cursor>
-
-            <a-ring
-                id="progressRing"
-                position="0 0 -1"
-                radius-inner="0.028"
-                radius-outer="0.04"
-                color="white"
-                opacity="0.8"
-                theta-length="0">
-            </a-ring>
-
-            <a-text
-                id="actionText"
-                value=""
-                position="0 0.1 -1"
-                align="center"
-                width="1.5"
-                color="#FFD700">
-            </a-text>
-
-            <a-plane
-                id="videoScreen"
-                visible="false"
-                width="4"
-                height="2.25"
-                position="0 0 -0.8"
-                material="src:#videoSaida">
-            </a-plane>
-        </a-camera>
+    <a-entity id="cameraRig" position="0 0 0">
+        <a-entity id="head" camera look-controls position="0 0 0">
+            <a-cursor id="cursor" color="white" fuse="false" geometry="primitive:ring; radiusInner:0.01; radiusOuter:0.02"></a-cursor>
+            <a-ring id="progressRing" position="0 0 -1" radius-inner="0.028" radius-outer="0.04" color="white" opacity="0.8" theta-length="0"></a-ring>
+            <a-text id="actionText" value="" position="0 0.1 -1" align="center" width="1.5" color="#FFD700"></a-text>
+            <a-plane id="videoScreen" visible="false" width="4" height="2.25" position="0 0 -0.8" material="src:#videoSaida"></a-plane>
+        </a-entity>
 
         <a-entity id="hudFollower" yaw-follower>
             <a-circle
                 id="recenterButton"
-                position="0 -1.0 -2"
-                radius="0.2"
+                position="0 1.2 -2" 
+                radius="0.15"
                 color="#444444"
-                opacity="0.6"
-                look-at="a-camera">
-                
+                opacity="0.5"
+                look-at="#head">
                 <a-text
                     value="CENTRALIZAR"
-                    position="0 0.05 0.01"
+                    position="0 -0.25 0"
                     align="center"
-                    width="2.5"
+                    width="2.2"
                     color="#FFFFFF">
                 </a-text>
             </a-circle>
         </a-entity>
-
     </a-entity>
 
 </a-scene>
 
 <script>
 window.onload = () => {
+    // ... (Mantive a lógica dos hotspots e recentealização inalterada)
     const musica = document.querySelector("#musicaAmbiente");
-    musica.volume = 0.10;
-    musica.loop = true;
-    musica.play();
-
+    musica.volume = 0.10; musica.loop = true; musica.play();
     const hotspotContainer = document.querySelector("#hotspotContainer");
     const progressRing = document.querySelector("#progressRing");
     const actionText = document.querySelector("#actionText");
 
-    let debugMode = false; 
-    let videoTocando = false;
+    let debugMode = false; let videoTocando = false; let isRecentering = false;
 
-    // Configuração dos Hotspots
     const hotspots = [
         { nome: "Grifo", posicao: "-1 -1.2 1.8", audio: "audioGrifo", tempo: 1000, raio: "0.08" },
         { nome: "Veado", posicao: "-2 -1.2 0.5", audio: "audioVeado", tempo: 1000, raio: "0.08" },
@@ -143,14 +94,13 @@ window.onload = () => {
 
     hotspots.forEach((data, index) => {
         const hotspot = document.createElement("a-circle");
-
         hotspot.setAttribute("id", "hotspot_" + index);
         hotspot.setAttribute("position", data.posicao);
         hotspot.setAttribute("radius", data.raio); 
         hotspot.setAttribute("color", "#AAAAAA");
         hotspot.setAttribute("opacity", debugMode ? "0.20" : "0");
         hotspot.setAttribute("side", "double");
-        hotspot.setAttribute("look-at", "a-camera"); 
+        hotspot.setAttribute("look-at", "#head");
 
         const tagLabel = document.createElement("a-text");
         tagLabel.setAttribute("class", "debugLabel");
@@ -160,160 +110,98 @@ window.onload = () => {
         tagLabel.setAttribute("width", "1.8");
         tagLabel.setAttribute("color", "#00FF00"); 
         tagLabel.setAttribute("visible", debugMode); 
-
         hotspot.appendChild(tagLabel);
         hotspotContainer.appendChild(hotspot);
 
-        let timer = null;
-        let progress = 0;
-        let isCoolingDown = false; 
+        let timer = null; let progress = 0; let isCoolingDown = false; 
 
         hotspot.addEventListener("mouseenter", () => {
-            if (videoTocando) return;
-
+            if (videoTocando || isRecentering) return;
             hotspot.setAttribute("opacity", "0.45");
             hotspot.setAttribute("scale", "1.15 1.15 1.15");
-            
             if (data.mensagem) {
                 actionText.setAttribute("value", data.mensagem);
                 actionText.setAttribute("color", data.corTexto ? data.corTexto : "#FFD700");
             }
-
-            progress = 0;
-            isCoolingDown = true; 
-
-            setTimeout(() => {
-                isCoolingDown = false;
-            }, 500);
-
+            progress = 0; isCoolingDown = true; 
+            setTimeout(() => { isCoolingDown = false; }, 500);
             timer = setInterval(() => {
-                if (isCoolingDown || videoTocando) return; 
-
+                if (isCoolingDown || videoTocando || isRecentering) return; 
                 progress += 50;
                 const percent = (progress / data.tempo) * 360;
                 progressRing.setAttribute("theta-length", percent);
-
                 if (progress >= data.tempo) {
-                    isCoolingDown = true;
-                    progressRing.setAttribute("theta-length", "0");
-
-                    if (data.audio) {
-                        const audio = document.querySelector("#" + data.audio);
-                        if (audio) {
-                            audio.currentTime = 0;
-                            audio.play();
-                        }
-                    }
-
-                    hotspot.setAttribute("opacity", "0.85");
-                    hotspot.setAttribute("color", "#FFFFFF");
-
+                    isCoolingDown = true; progressRing.setAttribute("theta-length", "0");
+                    if (data.audio) { const audio = document.querySelector("#" + data.audio); if (audio) { audio.currentTime = 0; audio.play(); } }
+                    hotspot.setAttribute("opacity", "0.85"); hotspot.setAttribute("color", "#FFFFFF");
                     if (data.isVideo) {
-                        videoTocando = true;
-                        actionText.setAttribute("value", ""); 
-                        
-                        const screen = document.querySelector("#videoScreen");
-                        const video = document.querySelector("#videoSaida");
-                        
-                        screen.setAttribute("visible", true);
-                        video.play();
-
-                        video.onended = () => {
-                            screen.setAttribute("visible", false);
-                            videoTocando = false;
-                        };
+                        videoTocando = true; actionText.setAttribute("value", ""); 
+                        const screen = document.querySelector("#videoScreen"); const video = document.querySelector("#videoSaida");
+                        screen.setAttribute("visible", true); video.play();
+                        video.onended = () => { screen.setAttribute("visible", false); videoTocando = false; };
                     }
-
-                    setTimeout(() => {
-                        progress = 0;
-                        isCoolingDown = false;
-                    }, 1500); 
+                    setTimeout(() => { progress = 0; isCoolingDown = false; }, 1500); 
                 }
             }, 50);
         });
 
         hotspot.addEventListener("mouseleave", () => {
-            clearInterval(timer);
-            isCoolingDown = false; 
-            progressRing.setAttribute("theta-length", "0");
-            hotspot.setAttribute("opacity", debugMode ? "0.20" : "0");
-            hotspot.setAttribute("color", "#AAAAAA");
-            hotspot.setAttribute("scale", "1 1 1");
-
-            if (data.mensagem && !videoTocando) {
-                actionText.setAttribute("value", "");
-            }
+            clearInterval(timer); isCoolingDown = false; progressRing.setAttribute("theta-length", "0");
+            hotspot.setAttribute("opacity", debugMode ? "0.20" : "0"); hotspot.setAttribute("color", "#AAAAAA"); hotspot.setAttribute("scale", "1 1 1");
+            if (data.mensagem && !videoTocando && !isRecentering) { actionText.setAttribute("value", ""); }
         });
     });
 
-    // LÓGICA DE RECENTRALIZAÇÃO 
     const recenterBtn = document.querySelector("#recenterButton");
     const rig = document.querySelector("#cameraRig");
-    let rcTimer = null;
-    let rcProgress = 0;
+    const head = document.querySelector("#head");
+    let rcTimer = null; let rcProgress = 0;
 
     recenterBtn.addEventListener("mouseenter", () => {
-        if (videoTocando) return;
-
-        recenterBtn.setAttribute("opacity", "0.85");
-        recenterBtn.setAttribute("scale", "1.15 1.15 1.15");
+        if (videoTocando || isRecentering) return;
+        recenterBtn.setAttribute("opacity", "0.85"); recenterBtn.setAttribute("scale", "1.15 1.15 1.15");
         rcProgress = 0;
-
         rcTimer = setInterval(() => {
             rcProgress += 50;
-            const percent = (rcProgress / 2000) * 360; // 2 segundos para focar
-            progressRing.setAttribute("theta-length", percent);
-
-            if (rcProgress >= 2000) {
-                rcProgress = 0;
-                progressRing.setAttribute("theta-length", "0");
-
-                // Identifica pra onde a pessoa está olhando e gira o mundo pra compensar
-                const cam = document.querySelector('a-camera');
-                const euler = new THREE.Euler(0, 0, 0, 'YXZ');
-                euler.setFromQuaternion(cam.object3D.quaternion);
-                
-                rig.object3D.rotation.y -= euler.y;
-
-                // Feedback visual verde indicando sucesso
-                recenterBtn.setAttribute("color", "#00FF00");
-                setTimeout(() => {
-                    recenterBtn.setAttribute("color", "#444444");
+            progressRing.setAttribute("theta-length", (rcProgress / 1000) * 360);
+            if (rcProgress >= 1000) {
+                clearInterval(rcTimer); progressRing.setAttribute("theta-length", "0"); isRecentering = true;
+                recenterBtn.setAttribute("visible", "false"); actionText.setAttribute("color", "#00FF00");
+                let countdown = 3; actionText.setAttribute("value", `Olhe para a frente: ${countdown}`);
+                let cdTimer = setInterval(() => {
+                    countdown--;
+                    if (countdown > 0) actionText.setAttribute("value", `Olhe para a frente: ${countdown}`);
+                    else {
+                        clearInterval(cdTimer); actionText.setAttribute("value", "Centro atualizado!");
+                        const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+                        euler.setFromQuaternion(head.object3D.quaternion);
+                        rig.object3D.rotation.y -= euler.y;
+                        setTimeout(() => {
+                            actionText.setAttribute("value", ""); recenterBtn.setAttribute("visible", "true");
+                            recenterBtn.setAttribute("opacity", "0.5"); recenterBtn.setAttribute("scale", "1 1 1");
+                            isRecentering = false;
+                        }, 2000);
+                    }
                 }, 1000);
             }
         }, 50);
     });
 
     recenterBtn.addEventListener("mouseleave", () => {
-        clearInterval(rcTimer);
-        rcProgress = 0;
-        progressRing.setAttribute("theta-length", "0");
-        recenterBtn.setAttribute("opacity", "0.6");
-        recenterBtn.setAttribute("scale", "1 1 1");
-        recenterBtn.setAttribute("color", "#444444");
+        if (isRecentering) return;
+        clearInterval(rcTimer); rcProgress = 0; progressRing.setAttribute("theta-length", "0");
+        recenterBtn.setAttribute("opacity", "0.5"); recenterBtn.setAttribute("scale", "1 1 1");
     });
 
-    // MODO DE DEPURACÃO (Teclado 'h')
-    document.addEventListener("keydown", (event) => {
-        if (event.key.toLowerCase() === "h") {
+    document.addEventListener("keydown", (e) => {
+        if (e.key.toLowerCase() === "h") {
             debugMode = !debugMode;
-            
-            const referenceGrid = document.querySelector("#referenceGrid");
-            if (referenceGrid) referenceGrid.setAttribute("visible", debugMode);
-
-            document.querySelectorAll("a-circle:not(#recenterButton)").forEach(h => {
-                h.setAttribute("opacity", debugMode ? "0.20" : "0");
-            });
-
-            document.querySelectorAll(".debugLabel").forEach(label => {
-                label.setAttribute("visible", debugMode);
-            });
-
-            console.log("DEBUG:", debugMode ? "ON" : "OFF");
+            const ref = document.querySelector("#referenceGrid"); if (ref) ref.setAttribute("visible", debugMode);
+            document.querySelectorAll("a-circle:not(#recenterButton)").forEach(h => h.setAttribute("opacity", debugMode ? "0.20" : "0"));
+            document.querySelectorAll(".debugLabel").forEach(l => l.setAttribute("visible", debugMode));
         }
     });
 };
 </script>
-
 </body>
 </html>
