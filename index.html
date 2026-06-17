@@ -72,9 +72,8 @@ window.onload = () => {
 
         // LÓGICA DE VISIBILIDADE FORÇADA PARA O BOTÃO DE VÍDEO
         if (data.isVideo) {
-            hotspot.setAttribute("color", "#FF0000"); // Cor Vermelha
-            hotspot.setAttribute("opacity", "0.7");   // Sempre visível
-            // Adiciona a animação de pulsar
+            hotspot.setAttribute("color", "#FF0000"); 
+            hotspot.setAttribute("opacity", "0.7");   
             hotspot.setAttribute("animation", "property: scale; to: 1.1 1.1 1.1; dir: alternate; loop: true; dur: 1000");
         } else {
             hotspot.setAttribute("color", "#AAAAAA");
@@ -97,7 +96,6 @@ window.onload = () => {
         hotspot.addEventListener("mouseenter", () => {
             if (videoTocando || isRecentering) return;
             
-            // Só altera a aparência ao passar o mouse se NÃO for o botão de vídeo (para não quebrar a animação de pulsar)
             if (!data.isVideo) {
                 hotspot.setAttribute("opacity", "0.45");
                 hotspot.setAttribute("scale", "1.15 1.15 1.15");
@@ -131,103 +129,4 @@ window.onload = () => {
                     }
                     
                     if (data.isVideo) {
-                        videoTocando = true; actionText.setAttribute("value", ""); 
-                        const screen = document.querySelector("#videoScreen"); const video = document.querySelector("#videoSaida");
-                        screen.setAttribute("visible", true); video.play();
-                        video.onended = () => { screen.setAttribute("visible", false); videoTocando = false; };
-                    }
-                    
-                    setTimeout(() => { progress = 0; isCoolingDown = false; }, 1500); 
-                }
-            }, 50);
-        });
-
-        hotspot.addEventListener("mouseleave", () => {
-            clearInterval(timer); isCoolingDown = false; progressRing.setAttribute("theta-length", "0");
-            
-            if (!data.isVideo) {
-                hotspot.setAttribute("opacity", debugMode ? "0.20" : "0"); 
-                hotspot.setAttribute("color", "#AAAAAA"); 
-                hotspot.setAttribute("scale", "1 1 1");
-            }
-            
-            if (data.mensagem && !videoTocando && !isRecentering) { actionText.setAttribute("value", ""); }
-        });
-    });
-
-    // LÓGICA DE CONTROLE BLUETOOTH (GAMEPAD)
-    const initGamepadSupport = () => {
-        window.addEventListener("gamepadconnected", (e) => {
-            console.log("Controle conectado:", e.gamepad.id);
-        });
-
-        const checkGamepad = () => {
-            const gamepads = navigator.getGamepads();
-            if (gamepads[0]) {
-                const gp = gamepads[0];
-                // Checa os primeiros botões (geralmente A, B, X, Y ou Gatilhos)
-                if (gp.buttons[0]?.pressed || gp.buttons[1]?.pressed || gp.buttons[2]?.pressed || gp.buttons[3]?.pressed) {
-                    if (!isRecentering && !videoTocando) {
-                        executarRecentralizacaoManual();
-                    }
-                }
-            }
-            requestAnimationFrame(checkGamepad);
-        };
-        
-        const executarRecentralizacaoManual = () => {
-            isRecentering = true;
-            actionText.setAttribute("color", "#00FF00");
-            let countdown = 3;
-            actionText.setAttribute("value", `Olhe para a frente: ${countdown}`);
-            
-            let cdTimer = setInterval(() => {
-                countdown--;
-                if (countdown > 0) {
-                    actionText.setAttribute("value", `Olhe para a frente: ${countdown}`);
-                } else {
-                    clearInterval(cdTimer);
-                    actionText.setAttribute("value", "Centro atualizado!");
-                    const cam = document.querySelector('a-camera');
-                    const euler = new THREE.Euler(0, 0, 0, 'YXZ');
-                    euler.setFromQuaternion(cam.object3D.quaternion);
-                    rig.object3D.rotation.y -= euler.y;
-                    
-                    setTimeout(() => {
-                        actionText.setAttribute("value", "");
-                        isRecentering = false;
-                    }, 2000);
-                }
-            }, 1000);
-        };
-
-        checkGamepad();
-    };
-
-    initGamepadSupport();
-
-    // MODO DE DEPURACÃO (Teclado 'h')
-    document.addEventListener("keydown", (e) => {
-        if (e.key.toLowerCase() === "h") {
-            debugMode = !debugMode;
-            const ref = document.querySelector("#referenceGrid"); if (ref) ref.setAttribute("visible", debugMode);
-            
-            document.querySelectorAll("a-circle").forEach(h => {
-                if (h.id && h.id.includes("hotspot_")) {
-                    const index = parseInt(h.id.split("_")[1]);
-                    // Protege o botão de vídeo para não sumir no modo debug
-                    if (!hotspots[index].isVideo) {
-                        h.setAttribute("opacity", debugMode ? "0.20" : "0");
-                    }
-                }
-            });
-            
-            document.querySelectorAll(".debugLabel").forEach(l => l.setAttribute("visible", debugMode));
-            console.log("DEBUG:", debugMode ? "ON" : "OFF");
-        }
-    });
-};
-</script>
-
-</body>
-</html>
+                        videoTocando = true; action
