@@ -82,22 +82,17 @@ window.onload = () => {
     const startButton = document.getElementById("startButton");
     
     // Configura a música
-    musica.volume = 0.10; 
+    musica.volume = 0.30; 
     musica.loop = true; 
 
-    // LÓGICA DO BOTÃO DE ENTRADA (Resolve o Bug do Mobile e do Delay)
+    // LÓGICA DO BOTÃO DE ENTRADA
     startButton.addEventListener("click", () => {
-        // Toca a música de fundo
         musica.play().catch(e => console.log("Erro ao tocar música:", e));
-
-        // Força o navegador a carregar todos os áudios imediatamente na memória
         document.querySelectorAll('audio').forEach(audio => {
             if (audio.id !== "musicaAmbiente") {
                 audio.load();
             }
         });
-
-        // Esconde a tela de introdução
         startOverlay.style.display = "none";
     });
 
@@ -209,6 +204,46 @@ window.onload = () => {
         });
     });
 
+    // ==========================================
+    // FUNÇÃO CENTRALIZADA DE RECALIBRAGEM
+    // ==========================================
+    const executarRecentralizacaoManual = () => {
+        if (isRecentering || videoTocando) return; // Proteção extra contra chamadas duplas
+        
+        isRecentering = true; 
+        actionText.setAttribute("color", "#00FF00");
+        let countdown = 3;
+        actionText.setAttribute("value", `Olhe para a frente: ${countdown}`);
+        
+        let cdTimer = setInterval(() => {
+            countdown--;
+            if (countdown > 0) {
+                actionText.setAttribute("value", `Olhe para a frente: ${countdown}`);
+            } else {
+                clearInterval(cdTimer);
+                actionText.setAttribute("value", "Centro atualizado!");
+                
+                const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+                euler.setFromQuaternion(head.object3D.quaternion);
+                rig.object3D.rotation.y -= euler.y;
+                
+                setTimeout(() => {
+                    actionText.setAttribute("value", "");
+                    isRecentering = false; 
+                }, 2000);
+            }
+        }, 1000);
+    };
+
+    // 1. SUPORTE PARA CONTROLES MODO "MOUSE" (Cliques na tela)
+    window.addEventListener("click", () => {
+        // Só permite recentralizar se a tela preta inicial já tiver sumido
+        if (startOverlay.style.display === "none") {
+            executarRecentralizacaoManual();
+        }
+    });
+
+    // 2. SUPORTE PARA CONTROLES MODO "GAMEPAD" (Nativo)
     const initGamepadSupport = () => {
         window.addEventListener("gamepadconnected", (e) => {
             console.log("Controle conectado:", e.gamepad.id);
@@ -219,44 +254,18 @@ window.onload = () => {
             if (gamepads[0]) {
                 const gp = gamepads[0];
                 if (gp.buttons[0]?.pressed || gp.buttons[1]?.pressed || gp.buttons[2]?.pressed || gp.buttons[3]?.pressed) {
-                    if (!isRecentering && !videoTocando) {
+                    // Impede o recentralizar caso o overlay ainda esteja ativo
+                    if (startOverlay.style.display === "none") {
                         executarRecentralizacaoManual();
                     }
                 }
             }
             requestAnimationFrame(checkGamepad);
         };
-        
-        const executarRecentralizacaoManual = () => {
-            isRecentering = true; 
-            actionText.setAttribute("color", "#00FF00");
-            let countdown = 3;
-            actionText.setAttribute("value", `Olhe para a frente: ${countdown}`);
-            
-            let cdTimer = setInterval(() => {
-                countdown--;
-                if (countdown > 0) {
-                    actionText.setAttribute("value", `Olhe para a frente: ${countdown}`);
-                } else {
-                    clearInterval(cdTimer);
-                    actionText.setAttribute("value", "Centro atualizado!");
-                    
-                    const euler = new THREE.Euler(0, 0, 0, 'YXZ');
-                    euler.setFromQuaternion(head.object3D.quaternion);
-                    rig.object3D.rotation.y -= euler.y;
-                    
-                    setTimeout(() => {
-                        actionText.setAttribute("value", "");
-                        isRecentering = false; 
-                    }, 2000);
-                }
-            }, 1000);
-        };
-
         checkGamepad();
     };
-
     initGamepadSupport();
+    // ==========================================
 
     document.addEventListener("keydown", (e) => {
         if (e.key.toLowerCase() === "h") {
